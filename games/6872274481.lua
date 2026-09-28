@@ -2095,6 +2095,7 @@ run(function()
 end)
 	
 local Attacking
+local knitHooked = false
 run(function()
 	local Killaura
 	local Targets
@@ -2197,10 +2198,21 @@ run(function()
 							return value
 						end
 					})
-					pcall(function()
+					local function isKnitUpvalue(func, index)
+						if type(func) ~= 'function' then return false end
+						local suc, _, value = pcall(debug.getupvalue, func, index)
+						return suc and type(value) == 'table' and type(value.Controllers) == 'table' and value.Controllers.ViewmodelController ~= nil
+					end
+
+					-- only swap the Knit upvalue if the game still stores it in this slot
+					if isKnitUpvalue(oldSwing or bedwars.SwordController.playSwordEffect, 6) then
 						debug.setupvalue(oldSwing or bedwars.SwordController.playSwordEffect, 6, fake)
+						knitHooked = true
+					end
+					if isKnitUpvalue(bedwars.ScytheController.playLocalAnimation, 3) then
 						debug.setupvalue(bedwars.ScytheController.playLocalAnimation, 3, fake)
-					end)
+						knitHooked = true
+					end
 
 					task.spawn(function()
 						local started = false
@@ -2357,10 +2369,13 @@ run(function()
 						lplr.PlayerGui.MobileUI['2'].Visible = true
 					end)
 				end
-				pcall(function()
-					debug.setupvalue(oldSwing or bedwars.SwordController.playSwordEffect, 6, bedwars.Knit)
-					debug.setupvalue(bedwars.ScytheController.playLocalAnimation, 3, bedwars.Knit)
-				end)
+				if knitHooked then
+					pcall(function()
+						debug.setupvalue(oldSwing or bedwars.SwordController.playSwordEffect, 6, bedwars.Knit)
+						debug.setupvalue(bedwars.ScytheController.playLocalAnimation, 3, bedwars.Knit)
+					end)
+					knitHooked = false
+				end
 				Attacking = false
 				if armC0 then
 					AnimTween = tweenService:Create(gameCamera.Viewmodel.RightHand.RightWrist, TweenInfo.new(AnimationTween.Enabled and 0.001 or 0.3, Enum.EasingStyle.Exponential), {
