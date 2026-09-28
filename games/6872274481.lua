@@ -2171,7 +2171,9 @@ run(function()
 								end,
 								playAnimation = function(...)
 									if not Attacking then
-										bedwars.ViewmodelController:playAnimation(select(2, ...))
+										pcall(function()
+											bedwars.ViewmodelController:playAnimation(select(2, ...))
+										end)
 									end
 								end
 							}, {
