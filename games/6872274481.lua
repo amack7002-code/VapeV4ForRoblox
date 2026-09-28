@@ -168,7 +168,10 @@ local function getItem(itemName, inv)
 end
 
 local function getRoactRender(func)
-	return debug.getupvalue(debug.getupvalue(debug.getupvalue(func, 3).render, 2).render, 1)
+	local suc, res = pcall(function()
+		return debug.getupvalue(debug.getupvalue(debug.getupvalue(func, 3).render, 2).render, 1)
+	end)
+	return suc and res or nil
 end
 
 local function getSword()
@@ -642,14 +645,19 @@ run(function()
 end)
 entitylib.start()
 local function safeGetProto(func, index)
-    if not func then return nil end
-    local success, proto = pcall(safeGetProto, func, index)
-    if success then
-        return proto
-    else
-        --warn("function:", func, "index:", index,", WM - proto") 
-        return nil
-    end
+	if not func then return nil end
+	local success, proto = pcall(debug.getproto, func, index)
+	if success then
+		return proto
+	else
+		--warn("function:", func, "index:", index,", WM - proto") 
+		return nil
+	end
+end
+local function safeGetUpvalue(func, index)
+	if not func then return nil end
+	local success, upvalue = pcall(debug.getupvalue, func, index)
+	return success and upvalue or nil
 end
 run(function()
 	local KnitInit, Knit
@@ -661,8 +669,8 @@ run(function()
 		task.wait()
 	until KnitInit
 
-	if not debug.getupvalue(Knit.Start, 1) then
-		repeat task.wait() until debug.getupvalue(Knit.Start, 1)
+	if not safeGetUpvalue(Knit.Start, 1) then
+		repeat task.wait() until safeGetUpvalue(Knit.Start, 1)
 	end
 
 	local Flamework = require(replicatedStorage['rbxts_include']['node_modules']['@flamework'].core.out).Flamework
@@ -682,7 +690,7 @@ run(function()
 		BlockController = require(replicatedStorage['rbxts_include']['node_modules']['@easy-games']['block-engine'].out).BlockEngine,
 		BlockEngine = require(lplr.PlayerScripts.TS.lib['block-engine']['client-block-engine']).ClientBlockEngine,
 		BlockPlacer = require(replicatedStorage['rbxts_include']['node_modules']['@easy-games']['block-engine'].out.client.placement['block-placer']).BlockPlacer,
-		BowConstantsTable = debug.getupvalue(Knit.Controllers.ProjectileController.enableBeam, 8),
+		BowConstantsTable = safeGetUpvalue(Knit.Controllers.ProjectileController.enableBeam, 8),
 		ClickHold = require(replicatedStorage['rbxts_include']['node_modules']['@easy-games']['game-core'].out.client.ui.lib.util['click-hold']).ClickHold,
 		Client = Client,
 		ClientConstructor = require(replicatedStorage['rbxts_include']['node_modules']['@rbxts'].net.out.client),
@@ -706,7 +714,7 @@ run(function()
 			}
 		end,
 		HudAliveCount = require(lplr.PlayerScripts.TS.controllers.global['top-bar'].ui.game['hud-alive-player-counts']).HudAlivePlayerCounts,
-		ItemMeta = debug.getupvalue(require(replicatedStorage.TS.item['item-meta']).getItemMeta, 1),
+		ItemMeta = safeGetUpvalue(require(replicatedStorage.TS.item['item-meta']).getItemMeta, 1),
 		KillEffectMeta = require(replicatedStorage.TS.locker['kill-effect']['kill-effect-meta']).KillEffectMeta,
 		KillFeedController = Flamework.resolveDependency('client/controllers/game/kill-feed/kill-feed-controller@KillFeedController'),
 		Knit = Knit,
@@ -723,7 +731,7 @@ run(function()
 		SoundList = require(replicatedStorage.TS.sound['game-sound']).GameSound,
 		SoundManager = require(replicatedStorage['rbxts_include']['node_modules']['@easy-games']['game-core'].out).SoundManager,
 		Store = require(lplr.PlayerScripts.TS.ui.store).ClientStore,
-		TeamUpgradeMeta = debug.getupvalue(require(replicatedStorage.TS.games.bedwars['team-upgrade']['team-upgrade-meta']).getTeamUpgradeMetaForQueue, 6),
+		TeamUpgradeMeta = safeGetUpvalue(require(replicatedStorage.TS.games.bedwars['team-upgrade']['team-upgrade-meta']).getTeamUpgradeMetaForQueue, 6),
 		UILayers = require(replicatedStorage['rbxts_include']['node_modules']['@easy-games']['game-core'].out).UILayers,
 		VisualizerUtils = require(lplr.PlayerScripts.TS.lib.visualizer['visualizer-utils']).VisualizerUtils,
 		WeldTable = require(replicatedStorage.TS.util['weld-util']).WeldUtil,
@@ -752,7 +760,7 @@ run(function()
 		DragonFly = Knit.Controllers.VoidDragonController.flapWings,
 		DropItem = Knit.Controllers.ItemDropController.dropItemInHand,
 		EquipItem = safeGetProto(require(replicatedStorage.TS.entity.entities['inventory-entity']).InventoryEntity.equipItem, 3),
-		FireProjectile = debug.getupvalue(Knit.Controllers.ProjectileController.launchProjectileWithValues, 2),
+		FireProjectile = safeGetUpvalue(Knit.Controllers.ProjectileController.launchProjectileWithValues, 2),
 		GroundHit = Knit.Controllers.FallDamageController.KnitStart,
 		GuitarHeal = Knit.Controllers.GuitarController.performHeal,
 		HannahKill = safeGetProto(Knit.Controllers.HannahController.registerExecuteInteractions, 1),
@@ -1164,7 +1172,7 @@ run(function()
 			setthreadidentity(2)
 
 			bedwars.Shop = require(replicatedStorage.TS.games.bedwars.shop['bedwars-shop']).BedwarsShop
-			bedwars.ShopItems = debug.getupvalue(debug.getupvalue(bedwars.Shop.getShopItem, 1), 2)
+			bedwars.ShopItems = safeGetUpvalue(safeGetUpvalue(bedwars.Shop.getShopItem, 1), 2)
 			bedwars.Shop.getShopItem('iron_sword', lplr)
 
 			setthreadidentity(old)
@@ -1176,7 +1184,7 @@ run(function()
 				until vape.Loaded == nil or bedwars.AppController:isAppOpen('BedwarsItemShopApp')
 
 				bedwars.Shop = require(replicatedStorage.TS.games.bedwars.shop['bedwars-shop']).BedwarsShop
-				bedwars.ShopItems = debug.getupvalue(debug.getupvalue(bedwars.Shop.getShopItem, 1), 2)
+				bedwars.ShopItems = safeGetUpvalue(safeGetUpvalue(bedwars.Shop.getShopItem, 1), 2)
 				store.shopLoaded = true
 			end)
 		end
@@ -2163,8 +2171,10 @@ run(function()
 							}
 						}
 					}
-					debug.setupvalue(oldSwing or bedwars.SwordController.playSwordEffect, 6, fake)
-					debug.setupvalue(bedwars.ScytheController.playLocalAnimation, 3, fake)
+					pcall(function()
+						debug.setupvalue(oldSwing or bedwars.SwordController.playSwordEffect, 6, fake)
+						debug.setupvalue(bedwars.ScytheController.playLocalAnimation, 3, fake)
+					end)
 
 					task.spawn(function()
 						local started = false
@@ -2321,8 +2331,10 @@ run(function()
 						lplr.PlayerGui.MobileUI['2'].Visible = true
 					end)
 				end
-				debug.setupvalue(oldSwing or bedwars.SwordController.playSwordEffect, 6, bedwars.Knit)
-				debug.setupvalue(bedwars.ScytheController.playLocalAnimation, 3, bedwars.Knit)
+				pcall(function()
+					debug.setupvalue(oldSwing or bedwars.SwordController.playSwordEffect, 6, bedwars.Knit)
+					debug.setupvalue(bedwars.ScytheController.playLocalAnimation, 3, bedwars.Knit)
+				end)
 				Attacking = false
 				if armC0 then
 					AnimTween = tweenService:Create(gameCamera.Viewmodel.RightHand.RightWrist, TweenInfo.new(AnimationTween.Enabled and 0.001 or 0.3, Enum.EasingStyle.Exponential), {
@@ -7012,7 +7024,10 @@ run(function()
 				end
 	
 				bedwars.ClickHold.showProgress = function(self)
-					local roact = debug.getupvalue(oldshowprogress, 1)
+					local roact = safeGetUpvalue(oldshowprogress, 1)
+					if not roact then
+						return oldshowprogress(self)
+					end
 					local countdown = roact.mount(roact.createElement('ScreenGui', {}, { roact.createElement('Frame', {
 						[roact.Ref] = self.wrapperRef,
 						Size = UDim2.new(),
@@ -7828,8 +7843,10 @@ run(function()
 	vape.Legit:CreateModule({
 		Name = 'HitFix',
 		Function = function(callback)
-			debug.setconstant(bedwars.SwordController.swingSwordAtMouse, 23, callback and 'raycast' or 'Raycast')
-			debug.setupvalue(bedwars.SwordController.swingSwordAtMouse, 4, callback and bedwars.QueryUtil or workspace)
+			pcall(function()
+				debug.setconstant(bedwars.SwordController.swingSwordAtMouse, 23, callback and 'raycast' or 'Raycast')
+				debug.setupvalue(bedwars.SwordController.swingSwordAtMouse, 4, callback and bedwars.QueryUtil or workspace)
+			end)
 		end,
 		Tooltip = 'Changes the raycast function to the correct one'
 	})
@@ -7915,10 +7932,13 @@ run(function()
 		DefaultOpacity = 0.8,
 		Function = function(hue, sat, val, opacity)
 			local func = oldinvrender or HotbarOpenInventory.render
-			modifyconstant(debug.getupvalue(HotbarApp, 23).render, 51, tonumber(Color3.fromHSV(hue, sat, val):ToHex(), 16))
-			modifyconstant(debug.getupvalue(HotbarApp, 23).render, 58, tonumber(Color3.fromHSV(hue, sat, math.clamp(val > 0.5 and val - 0.2 or val + 0.2, 0, 1)):ToHex(), 16))
-			modifyconstant(debug.getupvalue(HotbarApp, 23).render, 54, 1 - opacity)
-			modifyconstant(debug.getupvalue(HotbarApp, 23).render, 55, math.clamp(1.2 - opacity, 0, 1))
+			local app = safeGetUpvalue(HotbarApp, 23)
+			if app then
+				modifyconstant(app.render, 51, tonumber(Color3.fromHSV(hue, sat, val):ToHex(), 16))
+				modifyconstant(app.render, 58, tonumber(Color3.fromHSV(hue, sat, math.clamp(val > 0.5 and val - 0.2 or val + 0.2, 0, 1)):ToHex(), 16))
+				modifyconstant(app.render, 54, 1 - opacity)
+				modifyconstant(app.render, 55, math.clamp(1.2 - opacity, 0, 1))
+			end
 			modifyconstant(func, 31, tonumber(Color3.fromHSV(hue, sat, val):ToHex(), 16))
 			modifyconstant(func, 32, math.clamp(1.2 - opacity, 0, 1))
 			modifyconstant(func, 34, tonumber(Color3.fromHSV(hue, sat, math.clamp(val > 0.5 and val - 0.2 or val + 0.2, 0, 1)):ToHex(), 16))
@@ -8319,6 +8339,7 @@ run(function()
 	end)
 	
 	local function modifyconstant(func, ind, val)
+		if not func then return end
 		if not old[func] then old[func] = {} end
 		if not new[func] then new[func] = {} end
 		if not old[func][ind] then
@@ -8384,9 +8405,14 @@ run(function()
 	UICleanup:CreateToggle({
 		Name = 'Resize Health',
 		Function = function(callback)
+			local app15, app23 = safeGetUpvalue(HotbarApp, 15), safeGetUpvalue(HotbarApp, 23)
 			modifyconstant(HotbarApp, 60, callback and 1 or nil)
-			modifyconstant(debug.getupvalue(HotbarApp, 15).render, 30, callback and 1 or nil)
-			modifyconstant(debug.getupvalue(HotbarApp, 23).tweenPosition, 16, callback and 0 or nil)
+			if app15 then
+				modifyconstant(app15.render, 30, callback and 1 or nil)
+			end
+			if app23 then
+				modifyconstant(app23.tweenPosition, 16, callback and 0 or nil)
+			end
 		end,
 		Default = true
 	})
@@ -8394,7 +8420,10 @@ run(function()
 		Name = 'No Hotbar Numbers',
 		Function = function(callback)
 			local func = oldinvrender or HotbarOpenInventory.render
-			modifyconstant(debug.getupvalue(HotbarApp, 23).render, 90, callback and 0 or nil)
+			local app = safeGetUpvalue(HotbarApp, 23)
+			if app then
+				modifyconstant(app.render, 90, callback and 0 or nil)
+			end
 			modifyconstant(func, 71, callback and 0 or nil)
 		end,
 		Default = true

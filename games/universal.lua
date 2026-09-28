@@ -14,7 +14,7 @@ end
 local function downloadFile(path, func)
 	if not isfile(path) then
 		local suc, res = pcall(function()
-			return game:HttpGet('https://raw.githubusercontent.com/qyroke2/VapeV4ForRoblox/'..readfile('newvape/profiles/commit.txt')..'/'..select(1, path:gsub('newvape/', '')), true)
+			return game:HttpGet('https://raw.githubusercontent.com/amack7002-code/VapeV4ForRoblox/'..readfile('newvape/profiles/commit.txt')..'/'..select(1, path:gsub('newvape/', '')), true)
 		end)
 		if not suc or res == '404: Not Found' then
 			error(res)
@@ -611,13 +611,14 @@ run(function()
 			end
 
 			if whitelist.textdata ~= whitelist.olddata then
-				if whitelist.data.Announcement.expiretime > os.time() then
-					local targets = whitelist.data.Announcement.targets
-					targets = targets == 'all' and {tostring(lplr.UserId)} or targets:split(',')
+				local announcement = whitelist.data and whitelist.data.Announcement
+				if announcement and type(announcement.expiretime) == 'number' and announcement.expiretime > os.time() then
+					local targets = announcement.targets
+					targets = targets == 'all' and {tostring(lplr.UserId)} or (type(targets) == 'string' and targets:split(',') or {})
 
-					if table.find(targets, tostring(lplr.UserId)) then
+					if announcement.text and table.find(targets, tostring(lplr.UserId)) then
 						local hint = Instance.new('Hint')
-						hint.Text = 'VAPE ANNOUNCEMENT: '..whitelist.data.Announcement.text
+						hint.Text = 'VAPE ANNOUNCEMENT: '..announcement.text
 						hint.Parent = workspace
 						game:GetService('Debris'):AddItem(hint, 20)
 					end
