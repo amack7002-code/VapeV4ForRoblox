@@ -2164,8 +2164,8 @@ run(function()
 
 				if Animation.Enabled and not (identifyexecutor and table.find({'Argon', 'Delta','Codex','Krampus','Solara','Xeno'}, ({identifyexecutor()})[1])) then
 					local fake = setmetatable({
-						Controllers = {
-							ViewmodelController = {
+						Controllers = setmetatable({
+							ViewmodelController = setmetatable({
 								isVisible = function()
 									return not Attacking
 								end,
@@ -2174,8 +2174,20 @@ run(function()
 										bedwars.ViewmodelController:playAnimation(select(2, ...))
 									end
 								end
-							}
-						}
+							}, {
+								__index = function(self, ind)
+									local value = bedwars.Knit.Controllers.ViewmodelController[ind]
+									rawset(self, ind, value)
+									return value
+								end
+							})
+						}, {
+							__index = function(self, ind)
+								local value = bedwars.Knit.Controllers[ind]
+								rawset(self, ind, value)
+								return value
+							end
+						})
 					}, {
 						__index = function(self, ind)
 							local value = bedwars.Knit[ind]
