@@ -2163,7 +2163,7 @@ run(function()
 				end
 
 				if Animation.Enabled and not (identifyexecutor and table.find({'Argon', 'Delta','Codex','Krampus','Solara','Xeno'}, ({identifyexecutor()})[1])) then
-					local fake = {
+					local fake = setmetatable({
 						Controllers = {
 							ViewmodelController = {
 								isVisible = function()
@@ -2176,7 +2176,13 @@ run(function()
 								end
 							}
 						}
-					}
+					}, {
+						__index = function(self, ind)
+							local value = bedwars.Knit[ind]
+							rawset(self, ind, value)
+							return value
+						end
+					})
 					pcall(function()
 						debug.setupvalue(oldSwing or bedwars.SwordController.playSwordEffect, 6, fake)
 						debug.setupvalue(bedwars.ScytheController.playLocalAnimation, 3, fake)

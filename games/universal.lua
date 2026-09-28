@@ -585,6 +585,8 @@ run(function()
 			end)
 
 			whitelist.data = suc and type(res) == 'table' and res or whitelist.data
+			whitelist.data.WhitelistedUsers = type(whitelist.data.WhitelistedUsers) == 'table' and whitelist.data.WhitelistedUsers or {}
+			whitelist.data.BlacklistedUsers = type(whitelist.data.BlacklistedUsers) == 'table' and whitelist.data.BlacklistedUsers or {}
 			whitelist.localprio = whitelist:get(lplr)
 
 			for _, v in whitelist.data.WhitelistedUsers do
