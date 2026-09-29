@@ -147,7 +147,7 @@ end
 local function getBow()
 	local bestBow, bestBowSlot, bestBowDamage = nil, nil, 0
 	for slot, item in store.inventory.inventory.items do
-		local bowMeta = bedwars.ItemMeta[item.itemType].projectileSource
+		local bowMeta = bedwars.ItemMeta[item.itemType] and bedwars.ItemMeta[item.itemType].projectileSource
 		if bowMeta and table.find(bowMeta.ammoItemTypes, 'arrow') then
 			local bowDamage = bedwars.ProjectileMeta[bowMeta.projectileType('arrow')].combat.damage or 0
 			if bowDamage > bestBowDamage then
@@ -176,8 +176,7 @@ end
 
 local function getSword()
 	local bestSword, bestSwordSlot, bestSwordDamage = nil, nil, 0
-	for slot, item in store.inventory.inventory.items do
-		local swordMeta = bedwars.ItemMeta[item.itemType].sword
+	for slot, item in store.inventory.inventory.items do			local swordMeta = bedwars.ItemMeta[item.itemType] and bedwars.ItemMeta[item.itemType].sword
 		if swordMeta then
 			local swordDamage = swordMeta.damage or 0
 			if swordDamage > bestSwordDamage then
@@ -190,8 +189,7 @@ end
 
 local function getTool(breakType)
 	local bestTool, bestToolSlot, bestToolDamage = nil, nil, 0
-	for slot, item in store.inventory.inventory.items do
-		local toolMeta = bedwars.ItemMeta[item.itemType].breakBlock
+	for slot, item in store.inventory.inventory.items do			local toolMeta = bedwars.ItemMeta[item.itemType] and bedwars.ItemMeta[item.itemType].breakBlock
 		if toolMeta then
 			local toolDamage = toolMeta[breakType] or 0
 			if toolDamage > bestToolDamage then
@@ -1035,10 +1033,12 @@ run(function()
 
 			if newinv.inventory.hand ~= oldinv.inventory.hand then
 				local currentHand, toolType = new.Inventory.observedInventory.inventory.hand, ''
-				if currentHand then
-					local handData = bedwars.ItemMeta[currentHand.itemType]
+			if currentHand and bedwars.ItemMeta then
+				local handData = bedwars.ItemMeta[currentHand.itemType]
+				if handData then
 					toolType = handData.sword and 'sword' or handData.block and 'block' or currentHand.itemType:find('bow') and 'bow'
 				end
+			end
 
 				store.hand = {
 					tool = currentHand and currentHand.tool,
@@ -2126,7 +2126,16 @@ run(function()
 	local anims, AnimDelay, AnimTween, armC0 = vape.Libraries.auraanims, tick()
 	local AttackRemote = {FireServer = function() end}
 	task.spawn(function()
-		AttackRemote = bedwars.Client:Get(remotes.AttackEntity).instance
+		repeat
+			local suc, call = pcall(function()
+				return bedwars.Client:Get(remotes.AttackEntity).instance
+			end)
+			if suc and call then
+				AttackRemote = call
+				break
+			end
+			task.wait(1)
+		until vape.Loaded == nil
 	end)
 
 	local function getAttackData()
@@ -2136,12 +2145,12 @@ run(function()
 
 		if GUI.Enabled then
 			if bedwars.AppController:isLayerOpen(bedwars.UILayers.MAIN) then return false end
-		end
-
-		local sword = Limit.Enabled and store.hand or store.tools.sword
+		end		local sword = Limit.Enabled and store.hand or store.tools.sword
 		if not sword or not sword.tool then return false end
 
 		local meta = bedwars.ItemMeta[sword.tool.Name]
+		if not meta or not meta.sword then return false end
+
 		if Limit.Enabled then
 			if store.hand.toolType ~= 'sword' or bedwars.DaoController.chargingMaid then return false end
 		end
