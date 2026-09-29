@@ -5135,37 +5135,37 @@ run(function()
 	})
 end)
 	
-run(function()
-	local ShopTierBypass
-	local tiered, nexttier = {}, {}
+-- run(function()
+-- 	local ShopTierBypass
+-- 	local tiered, nexttier = {}, {}
 	
-	ShopTierBypass = vape.Categories.Utility:CreateModule({
-		Name = 'ShopTierBypass',
-		Function = function(callback)
-			if callback then
-				repeat task.wait() until store.shopLoaded or not ShopTierBypass.Enabled
-				if ShopTierBypass.Enabled then
-					for _, v in bedwars.Shop.ShopItems do
-						tiered[v] = v.tiered
-						nexttier[v] = v.nextTier
-						v.nextTier = nil
-						v.tiered = nil
-					end
-				end
-			else
-				for i, v in tiered do
-					i.tiered = v
-				end
-				for i, v in nexttier do
-					i.nextTier = v
-				end
-				table.clear(nexttier)
-				table.clear(tiered)
-			end
-		end,
-		Tooltip = 'Lets you buy things like armor early.'
-	})
-end)
+-- 	ShopTierBypass = vape.Categories.Utility:CreateModule({
+-- 		Name = 'ShopTierBypass',
+-- 		Function = function(callback)
+-- 			if callback then
+-- 				repeat task.wait() until store.shopLoaded or not ShopTierBypass.Enabled
+-- 				if ShopTierBypass.Enabled then
+-- 					for _, v in bedwars.Shop.ShopItems do
+-- 						tiered[v] = v.tiered
+-- 						nexttier[v] = v.nextTier
+-- 						v.nextTier = nil
+-- 						v.tiered = nil
+-- 					end
+-- 				end
+-- 			else
+-- 				for i, v in tiered do
+-- 					i.tiered = v
+-- 				end
+-- 				for i, v in nexttier do
+-- 					i.nextTier = v
+-- 				end
+-- 				table.clear(nexttier)
+-- 				table.clear(tiered)
+-- 			end
+-- 		end,
+-- 		Tooltip = 'Lets you buy things like armor early.'
+-- 	})
+-- end)
 	
 run(function()
 	local StaffDetector
@@ -11197,14 +11197,6 @@ run(function()
 		"Gamepad"
 	}
 
-	-- what the game's device checks should read for each spoofed device
-	local deviceStates = {
-		PC = {TouchEnabled = false, KeyboardEnabled = true, MouseEnabled = true, GamepadEnabled = false},
-		Mobile = {TouchEnabled = true, KeyboardEnabled = false, MouseEnabled = false, GamepadEnabled = false},
-		Gamepad = {TouchEnabled = false, KeyboardEnabled = false, MouseEnabled = true, GamepadEnabled = true}
-	}
-	local oldindex
-
 	local function fireSpoof(value)
 		if SpoofEvent then
 			pcall(function()
@@ -11215,27 +11207,12 @@ run(function()
 
 	DeviceSpoof = vape.Categories.Utility:CreateModule({
 		Name = "Device Spoofer",
-		Tooltip = 'Spoofs your device to the game and server',
+		Tooltip = 'Shows you as the selected device (input stays real)',
 
 		Function = function(callback)
 			if callback then
+				-- real input stays untouched; only declares the device to the game and server
 				fireSpoof(Device.Value)
-
-				-- client-side spoof: game scripts read the fake device, vape reads the real one
-				oldindex = hookmetamethod(game, '__index', function(self, ind)
-					if self == inputService and not checkcaller() then
-						local state = Device and deviceStates[Device.Value]
-						if state and state[ind] ~= nil then
-							return state[ind]
-						end
-					end
-					return oldindex(self, ind)
-				end)
-			else
-				if oldindex then
-					hookmetamethod(game, '__index', oldindex)
-					oldindex = nil
-				end
 			end
 		end
 	})
@@ -11249,6 +11226,28 @@ run(function()
 			if DeviceSpoof.Enabled then
 				fireSpoof(value)
 			end
+		end
+	})
+end)
+
+run(function()
+	local NameHider
+	local customName
+
+	NameHider = vape.Categories.Utility:CreateModule({
+		Name = "name hider",
+		Tooltip = 'hides your name client sided',
+
+		Function = function(callback)
+			-- customName is set below; hook into nametags/chat here when implemented
+		end
+	})
+
+	NameHider:CreateTextBox({
+		Name = 'custom name',
+		Placeholder = 'text or num',
+		Function = function(enter)
+			customName = enter
 		end
 	})
 end)
