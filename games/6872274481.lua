@@ -11200,7 +11200,7 @@ run(function()
 	local function fireSpoof(value)
 		if SpoofEvent then
 			pcall(function()
-				SpoofEvent:FireServer(value)
+				SpoofEvent:FireServer(string.upper(value))
 			end)
 		end
 	end
