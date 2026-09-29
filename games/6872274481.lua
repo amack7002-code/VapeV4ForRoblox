@@ -11176,4 +11176,42 @@ run(function()
 			SkinTypeDropdown:Set(CURRENT_SKIN_TYPE)
 		end
 	end)
+
+
+
+end)
+
+run(function()
+	local DeviceSpoof
+	local Device
+
+	local SpoofEvent = ReplicatedStorage
+		.rbxts_include.node_modules["@rbxts"].net.out._NetManaged.SendUserInputType
+
+	local devices = {
+		"PC",
+		"Mobile",
+		"Gamepad"
+	}
+
+	DeviceSpoof = vape.Categories.Utility:CreateModule({
+		Name = "Device Spoofer",
+
+		Function = function(callback)
+			if callback then
+				SpoofEvent:FireServer(Device.Value)
+			end
+		end
+	})
+
+	Device = DeviceSpoof:CreateDropdown({
+		Name = "Device",
+		List = devices,
+
+		Function = function(value)
+			if DeviceSpoof.Enabled then
+				SpoofEvent:FireServer(value)
+			end
+		end
+	})
 end)
