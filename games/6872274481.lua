@@ -11185,8 +11185,11 @@ run(function()
 	local DeviceSpoof
 	local Device
 
-	local SpoofEvent = ReplicatedStorage
-		.rbxts_include.node_modules["@rbxts"].net.out._NetManaged.SendUserInputType
+	local SpoofSuc, SpoofEvent = pcall(function()
+		return ReplicatedStorage
+			.rbxts_include.node_modules["@rbxts"].net.out._NetManaged.SendUserInputType
+	end)
+	SpoofEvent = SpoofSuc and SpoofEvent or nil
 
 	local devices = {
 		"PC",
@@ -11194,12 +11197,45 @@ run(function()
 		"Gamepad"
 	}
 
+	-- what the game's device checks should read for each spoofed device
+	local deviceStates = {
+		PC = {TouchEnabled = false, KeyboardEnabled = true, MouseEnabled = true, GamepadEnabled = false},
+		Mobile = {TouchEnabled = true, KeyboardEnabled = false, MouseEnabled = false, GamepadEnabled = false},
+		Gamepad = {TouchEnabled = false, KeyboardEnabled = false, MouseEnabled = true, GamepadEnabled = true}
+	}
+	local oldindex
+
+	local function fireSpoof(value)
+		if SpoofEvent then
+			pcall(function()
+				SpoofEvent:FireServer(value)
+			end)
+		end
+	end
+
 	DeviceSpoof = vape.Categories.Utility:CreateModule({
 		Name = "Device Spoofer",
+		Tooltip = 'Spoofs your device to the game and server',
 
 		Function = function(callback)
 			if callback then
-				SpoofEvent:FireServer(Device.Value)
+				fireSpoof(Device.Value)
+
+				-- client-side spoof: game scripts read the fake device, vape reads the real one
+				oldindex = hookmetamethod(game, '__index', function(self, ind)
+					if self == inputService and not checkcaller() then
+						local state = Device and deviceStates[Device.Value]
+						if state and state[ind] ~= nil then
+							return state[ind]
+						end
+					end
+					return oldindex(self, ind)
+				end)
+			else
+				if oldindex then
+					hookmetamethod(game, '__index', oldindex)
+					oldindex = nil
+				end
 			end
 		end
 	})
@@ -11207,10 +11243,11 @@ run(function()
 	Device = DeviceSpoof:CreateDropdown({
 		Name = "Device",
 		List = devices,
+		Default = "PC",
 
 		Function = function(value)
 			if DeviceSpoof.Enabled then
-				SpoofEvent:FireServer(value)
+				fireSpoof(value)
 			end
 		end
 	})
