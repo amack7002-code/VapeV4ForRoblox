@@ -10216,6 +10216,171 @@ run(function()
 end)
 
 run(function()
+    local AutoDodge
+    local Targets
+    local Melee
+    local Range
+    
+    local oldroot, clone, hip = nil, nil, 2.5
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Include
+    rayParams.RespectCanCollide = true
+    
+    local function doClone()
+        if store.rootpart then return end
+        if entitylib.isAlive and entitylib.character.Humanoid.Health > 0 then
+            if oldroot and oldroot.Parent then
+                return true
+            end
+    
+            hip = entitylib.character.Humanoid.HipHeight
+            oldroot = entitylib.character.HumanoidRootPart
+            if not lplr.Character.Parent then return false end
+            lplr.Character.Parent = replicatedStorage
+            clone = oldroot:Clone()
+            clone.Parent = lplr.Character
+            oldroot.Transparency = 1
+            oldroot.Parent = workspace
+            store.rootpart = oldroot
+            lplr.Character.PrimaryPart = clone
+            lplr.Character.Parent = workspace
+            bedwars.QueryUtil:setQueryIgnored(clone, true)
+            bedwars.QueryUtil:setQueryIgnored(oldroot, true)
+            return true
+        end
+        return false
+    end
+    
+    local function revertClone()
+        if oldroot and oldroot.Parent and entitylib.isAlive then 
+            lplr.Character.Parent = replicatedStorage
+            oldroot.Parent = lplr.Character
+            if clone then
+                oldroot.CFrame = clone.CFrame
+                oldroot.Velocity = clone.Velocity
+                clone:Destroy()
+                clone = nil
+            end
+            lplr.Character.PrimaryPart = oldroot
+            lplr.Character.Parent = workspace
+            oldroot.CanCollide = true
+            entitylib.character.Humanoid.HipHeight = hip or 2.6
+            oldroot.Transparency = 1
+            oldroot = nil
+            store.rootpart = nil
+            return true
+        end
+        return false
+    end
+    
+    AutoDodge = vape.Categories.Blatant:CreateModule({
+    	Name = 'Auto Dodge',
+    	Tooltip = 'Dodges melee and projectiles "blatantly"',
+    	Function = function(call)
+    		if call then
+    			repeat
+    				task.wait()
+    			until store.matchState ~= 0 and store.map or not AutoDodge.Enabled
+    			if not AutoDodge.Enabled then
+    				return
+    			end
+    
+    			rayParams.FilterDescendantsInstances = {store.map}
+    			local lowestpoint = 9e9
+    			local Dodge = 0
+    			for _, v in store.blocks do
+    				local point = (v.Position.Y - (v.Size.Y / 2)) - 50
+    				if point < lowestpoint then
+    					lowestpoint = point
+    				end
+    			end
+    
+                AutoDodge:Clean(runService.PostSimulation:Connect(function()
+                    if oldroot and oldroot.Parent then
+                        local newpoint, pos = lowestpoint, CFrame.new(clone.CFrame.X, lowestpoint - 6, clone.CFrame.Z)
+                        if Dodge then
+                            newpoint = workspace:Raycast(pos.Position, Vector3.new(0, 1000, 0), rayParams)
+                            if newpoint then
+                                newpoint = CFrame.new(clone.CFrame.X, newpoint.Position.Y - 6, clone.CFrame.Z) * CFrame.Angles(math.rad(90), 0, 0)
+                            end
+                        end
+                        oldroot.Velocity = Vector3.zero
+                        oldroot.CFrame = Dodge and (newpoint or pos) or (clone.CFrame + Vector3.new(0, 1, 0)) * CFrame.Angles(math.rad(90), 0, 0)
+                    end
+                end))
+    
+                local last = true
+                repeat
+                    if entitylib.isAlive then
+                        if oldroot then
+                            local ownership = isnetworkowner(oldroot)
+                            if not ownership and ownership ~= last then
+                                notif('AutoDodge', 'Network ownership disowned', 7, 'alert')
+                            end
+                            last = ownership
+                            if not ownership then
+                                Dodge = false
+                                revertClone()
+                                task.wait()
+                                continue
+                            end
+                        end
+    
+                        if Melee.Enabled and entitylib.EntityPosition({
+                            Range = Range.Value,
+                            Players = Targets.Players.Enabled,
+                            NPCs = Targets.NPCs.Enabled,
+                            Wallcheck = Targets.Walls.Enabled or nil,
+                            Sort = sortmethods.Distance,
+                            Part = 'RootPart',
+                        }) and doClone() then
+                            Dodge = false
+                            task.wait(0.2)
+                            Dodge = true
+                            task.wait(0.4)
+                        else
+                            Dodge = false
+                            revertClone()
+                        end
+                    end
+                    task.wait()
+                until not AutoDodge.Enabled
+    		else
+    			revertClone()
+    		end
+    	end,
+    })
+    
+    Targets = AutoDodge:CreateTargets({
+    	Players = true,
+    	NPCs = false,
+    })
+    Melee = AutoDodge:CreateToggle({
+    	Name = 'Melee',
+    	Tooltip = 'Dodges melee attacks',
+    	Default = true,
+    	Function = function(call)
+    		pcall(function()
+    			Range.Object.Visible = call
+    		end)
+    	end,
+    })
+    Range = AutoDodge:CreateSlider({
+    	Name = 'Melee Range',
+    	Min = 1,
+    	Max = 30,
+    	Default = 30,
+    	Decimal = 5,
+    	Darker = true,
+    })
+    AutoDodge:CreateToggle({
+    	Name = 'Projectiles',
+    	Tooltip = 'Dodges projectiles',
+    	Default = true,
+    })
+end)
+
+run(function()
 	local AutoHonor
 	local Delay
 	local honoredusers = {}
@@ -11200,14 +11365,14 @@ run(function()
 	local function fireSpoof(value)
 		if SpoofEvent then
 			pcall(function()
-				SpoofEvent:FireServer(string.upper(value))
+				SpoofEvent:FireServer(value)
 			end)
 		end
 	end
 
 	DeviceSpoof = vape.Categories.Utility:CreateModule({
 		Name = "Device Spoofer",
-		Tooltip = 'Shows you as the selected device (input stays real)',
+		Tooltip = 'Shows you as the selected device',
 
 		Function = function(callback)
 			if callback then
@@ -11239,7 +11404,7 @@ run(function()
 		Tooltip = 'hides your name client sided',
 
 		Function = function(callback)
-			-- customName is set below; hook into nametags/chat here when implemented
+			
 		end
 	})
 
