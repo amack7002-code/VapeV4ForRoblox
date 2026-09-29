@@ -11399,12 +11399,77 @@ run(function()
 	local NameHider
 	local customName
 
+	local fakeSelfId = '239702688'
+	local fakeOthers = {Name = 'player', UserId = '1'}
+	local saved = {}
+	local connections = {}
+
+	local function getSelfFake()
+		return {Name = (customName and customName ~= '' and customName) or 'vapeuser', UserId = fakeSelfId}
+	end
+
+	local function plrthing(obj, property)
+		if typeof(obj[property]) ~= 'string' then return end
+		saved[obj] = saved[obj] or {}
+		if saved[obj][property] == nil then
+			saved[obj][property] = obj[property]
+		end
+
+		local text = saved[obj][property]
+		for _, v in playersService:GetPlayers() do
+			local fake = v == lplr and getSelfFake() or fakeOthers
+			text = text:gsub(v.Name, fake.Name)
+			local dn = v.DisplayName
+			if dn ~= v.Name then
+				text = text:gsub(dn, fake.Name)
+			end
+			text = text:gsub(tostring(v.UserId), fake.UserId)
+		end
+		obj[property] = text
+	end
+
+	local function newobj(v)
+		if v:IsA('TextLabel') or v:IsA('TextButton') then
+			plrthing(v, 'Text')
+			table.insert(connections, v:GetPropertyChangedSignal('Text'):Connect(function()
+				plrthing(v, 'Text')
+			end))
+		end
+		if v:IsA('ImageLabel') then
+			plrthing(v, 'Image')
+			table.insert(connections, v:GetPropertyChangedSignal('Image'):Connect(function()
+				plrthing(v, 'Image')
+			end))
+		end
+	end
+
+	local function restoreAll()
+		for _, v in connections do
+			pcall(function() v:Disconnect() end)
+		end
+		table.clear(connections)
+		for obj, props in saved do
+			for prop, val in props do
+				pcall(function() obj[prop] = val end)
+			end
+		end
+		table.clear(saved)
+	end
+
 	NameHider = vape.Categories.Utility:CreateModule({
 		Name = "name hider",
 		Tooltip = 'hides your name client sided',
 
 		Function = function(callback)
-			
+			if callback then
+				table.insert(connections, game.DescendantAdded:Connect(function(v)
+					task.defer(newobj, v)				end))
+				for _, v in game:GetDescendants() do
+					newobj(v)
+				end
+			else
+				restoreAll()
+			end
 		end
 	})
 
