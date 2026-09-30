@@ -8826,80 +8826,129 @@ run(function()
 end)
 run(function()
     local HitFix
-	local PingBased
-	local Options
+    local Options
+    local PingBased
+
+    local Stats = game:GetService('Stats')
+    local patch -- saved originals for the current enable
+
+    local function getPing()
+        local ok, ping = pcall(function()
+            return Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+        end)
+        return ok and ping or 50
+    end
+
+    local function getDelay()
+        local blatant = Options.Value == 'Blatant'
+        if PingBased.Enabled then
+            local ping = getPing()
+            if blatant then
+                return math.clamp(0.08 + ping / 1000, 0.08, 0.14)
+            end
+            return math.clamp(0.11 + ping / 1200, 0.11, 0.15)
+        end
+        return blatant and 0.1 or 0.13
+    end
+
+    -- Locate patch targets by value instead of hardcoded indices, and remember originals
+    local function scan(func)
+        local data = {func = func, delays = {}, raycastIdx = 23, wsIdx = 4}
+        for i, v in pairs(debug.getconstants(func)) do
+            if v == 0.15 or v == 0.1 then
+                data.delays[i] = v
+            elseif v == 'Raycast' then
+                data.raycastIdx = i
+            end
+        end
+        for i, v in pairs(debug.getupvalues(func)) do
+            if v == workspace then
+                data.wsIdx = i
+            end
+        end
+        return data
+    end
+
+    local function apply()
+        if not patch then return end
+        local delay = getDelay()
+        for i in pairs(patch.delays) do
+            debug.setconstant(patch.func, i, delay)
+        end
+        if Options.Value == 'Blatant' then
+            debug.setconstant(patch.func, patch.raycastIdx, 'raycast')
+            debug.setupvalue(patch.func, patch.wsIdx, bedwars.QueryUtil)
+        else
+            debug.setconstant(patch.func, patch.raycastIdx, 'Raycast')
+            debug.setupvalue(patch.func, patch.wsIdx, workspace)
+        end
+    end
+
+    local function restore()
+        if not patch then return end
+        pcall(function()
+            for i, v in pairs(patch.delays) do
+                debug.setconstant(patch.func, i, v)
+            end
+            debug.setconstant(patch.func, patch.raycastIdx, 'Raycast')
+            debug.setupvalue(patch.func, patch.wsIdx, workspace)
+        end)
+        patch = nil
+    end
+
     HitFix = vape.Categories.Blatant:CreateModule({
         Name = 'HitFix',
         Function = function(callback)
-            local function getPing()
-                local stats = game:GetService("Stats")
-                local ping = stats.Network.ServerStatsItem["Data Ping"]:GetValueString()
-                return tonumber(ping:match("%d+")) or 50
-            end
-
-            local function getDelay()
-                local ping = getPing()
-
-                if PingBased.Enabled then
-                    if Options.Value == "Blatant" then
-                        return math.clamp(0.08 + (ping / 1000), 0.08, 0.14)
-                    else
-                        return math.clamp(0.11 + (ping / 1200), 0.11, 0.15)
-                    end
+            if callback then
+                local func = bedwars.SwordController and bedwars.SwordController.swingSwordAtMouse
+                if not func then
+                    warn('[HitFix] swingSwordAtMouse not found')
+                    return HitFix:Toggle()
                 end
 
-                return Options.Value == "Blatant" and 0.1 or 0.13
-            end
+                local ok, err = pcall(function()
+                    patch = scan(func)
+                    apply()
+                end)
+                if not ok then
+                    warn('[HitFix] patch failed: ' .. tostring(err))
+                    restore()
+                    return HitFix:Toggle()
+                end
 
-            if callback then
-                pcall(function()
-                    if bedwars.SwordController and bedwars.SwordController.swingSwordAtMouse then
-                        local func = bedwars.SwordController.swingSwordAtMouse
-
-                        if Options.Value == "Blatant" then
-                            debug.setconstant(func, 23, "raycast")
-                            debug.setupvalue(func, 4, bedwars.QueryUtil)
-                        end
-
-                        for i, v in ipairs(debug.getconstants(func)) do
-                            if typeof(v) == "number" and (v == 0.15 or v == 0.1) then
-                                debug.setconstant(func, i, getDelay())
-                            end
+                -- constants are static, so re-patch periodically to track ping
+                HitFix:Clean(task.spawn(function()
+                    while HitFix.Enabled do
+                        task.wait(1)
+                        if PingBased.Enabled then
+                            pcall(apply)
                         end
                     end
-                end)
+                end))
             else
-                pcall(function()
-                    if bedwars.SwordController and bedwars.SwordController.swingSwordAtMouse then
-                        local func = bedwars.SwordController.swingSwordAtMouse
-
-                        debug.setconstant(func, 23, "Raycast")
-                        debug.setupvalue(func, 4, workspace)
-
-                        for i, v in ipairs(debug.getconstants(func)) do
-                            if typeof(v) == "number" then
-                                if v < 0.15 then
-                                    debug.setconstant(func, i, 0.15)
-                                end
-                            end
-                        end
-                    end
-                end)
+                restore() -- exact originals, no blanket "< 0.15" overwrite
             end
         end,
         Tooltip = 'Improves hit registration and decreases the chances of a ghost hit'
     })
 
     Options = HitFix:CreateDropdown({
-        Name = "Mode",
-        List = {"Blatant", "Legit"},
+        Name = 'Mode',
+        List = {'Blatant', 'Legit'},
+        Function = function()
+            if HitFix.Enabled then pcall(apply) end
+        end
     })
 
     PingBased = HitFix:CreateToggle({
-        Name = "Ping Based",
+        Name = 'Ping Based',
         Default = false,
+        Function = function()
+            if HitFix.Enabled then pcall(apply) end
+        end
     })
 end)
+
 run(function()
 	local BCR
 	local Value
@@ -11463,7 +11512,8 @@ run(function()
 		Function = function(callback)
 			if callback then
 				table.insert(connections, game.DescendantAdded:Connect(function(v)
-					task.defer(newobj, v)				end))
+					task.defer(newobj, v)
+				end))
 				for _, v in game:GetDescendants() do
 					newobj(v)
 				end
