@@ -11422,7 +11422,9 @@ run(function()
 	local function fireSpoof(value)
 		if not SpoofEvent or not value then return end
 		pcall(function()
-			SpoofEvent:FireServer('UserInputType =', value)
+			SpoofEvent:FireServer({
+				userInputType = value:upper()
+			})
 		end)
 	end
 
