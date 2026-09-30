@@ -11399,43 +11399,60 @@ run(function()
 	local DeviceSpoof
 	local Device
 
-	local SpoofSuc, SpoofEvent = pcall(function()
-		return ReplicatedStorage
-			.rbxts_include.node_modules["@rbxts"].net.out._NetManaged.SendUserInputType
-	end)
-	SpoofEvent = SpoofSuc and SpoofEvent or nil
+	local UserInputService = game:GetService('UserInputService')
+	local ReplicatedStorage = game:GetService('ReplicatedStorage')
 
-	local devices = {
-		"PC",
-		"Mobile",
-		"Gamepad"
-	}
+	local SpoofEvent do
+		local suc, res = pcall(function()
+			return ReplicatedStorage.rbxts_include.node_modules['@rbxts'].net.out._NetManaged.SendUserInputType
+		end)
+		SpoofEvent = suc and res or nil
+	end
+
+	local function getRealDevice()
+		local t = UserInputService:GetLastInputType()
+		if t == Enum.UserInputType.Touch then
+			return 'Mobile'
+		elseif t.Name:find('Gamepad') then
+			return 'Gamepad'
+		end
+		return 'PC'
+	end
 
 	local function fireSpoof(value)
-		if SpoofEvent then
-			pcall(function()
-				SpoofEvent:FireServer(value)
-			end)
-		end
+		if not SpoofEvent or not value then return end
+		pcall(function()
+			SpoofEvent:FireServer('UserInputType =', value)
+		end)
 	end
 
 	DeviceSpoof = vape.Categories.Utility:CreateModule({
-		Name = "Device Spoofer",
+		Name = 'Device Spoofer',
 		Tooltip = 'Shows you as the selected device',
-
 		Function = function(callback)
 			if callback then
-				-- real input stays untouched; only declares the device to the game and server
+				if not SpoofEvent then
+					warn('[DeviceSpoof] SendUserInputType remote not found')
+					return DeviceSpoof:Toggle()
+				end
+
 				fireSpoof(Device.Value)
+
+				-- the game re-reports your real input type on input change; overwrite it again
+				DeviceSpoof:Clean(UserInputService.LastInputTypeChanged:Connect(function()
+					task.defer(fireSpoof, Device.Value)
+				end))
+			else
+				-- tell the server your actual device again
+				fireSpoof(getRealDevice())
 			end
 		end
 	})
 
 	Device = DeviceSpoof:CreateDropdown({
-		Name = "Device",
-		List = devices,
-		Default = "PC",
-
+		Name = 'Device',
+		List = {'PC', 'Mobile', 'Gamepad'},
+		Default = 'PC',
 		Function = function(value)
 			if DeviceSpoof.Enabled then
 				fireSpoof(value)
