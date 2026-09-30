@@ -2651,6 +2651,11 @@ run(function()
 		projectileRemote = bedwars.Client:Get(remotes.FireProjectile).instance
 	end)
 	
+	local function getDirection(vec)
+		local horizontal = Vector3.new(vec.X, 0, vec.Z)
+		return horizontal.Magnitude > 0 and horizontal.Unit or Vector3.zero
+	end
+	
 	local function launchProjectile(item, pos, proj, speed, dir)
 		if not pos then return end
 	
@@ -2701,7 +2706,7 @@ run(function()
 								bedwars.breakBlock(block, true, true)
 								JumpSpeed = 5.25 * Value.Value
 								JumpTick = tick() + 2.3
-								Direction = Vector3.new(dir.X, 0, dir.Z).Unit
+								Direction = getDirection(dir)
 								break
 							end
 							task.wait(0.1)
@@ -2714,7 +2719,7 @@ run(function()
 			LongJump:Clean(vapeEvents.CatPounce.Event:Connect(function()
 				JumpSpeed = 4 * Value.Value
 				JumpTick = tick() + 2.5
-				Direction = Vector3.new(dir.X, 0, dir.Z).Unit
+				Direction = getDirection(dir)
 				entitylib.character.RootPart.Velocity = Vector3.zero
 			end))
 	
@@ -2741,7 +2746,7 @@ run(function()
 				bedwars.AbilityController:useAbility(item.itemType..'_jump')
 				JumpSpeed = 1.4 * Value.Value
 				JumpTick = tick() + 2.5
-				Direction = Vector3.new(dir.X, 0, dir.Z).Unit
+				Direction = getDirection(dir)
 			end
 		end,
 		tnt = function(item, pos, dir)
@@ -2765,7 +2770,7 @@ run(function()
 				})
 				JumpSpeed = 4.5 * Value.Value
 				JumpTick = tick() + 2.4
-				Direction = Vector3.new(dir.X, 0, dir.Z).Unit
+				Direction = getDirection(dir)
 			end
 		end
 	}
@@ -2795,7 +2800,7 @@ run(function()
 							local vec = (entitylib.character.RootPart.Position - pos)
 							JumpSpeed = knockbackBoost
 							JumpTick = tick() + 2.5
-							Direction = Vector3.new(vec.X, 0, vec.Z).Unit
+							Direction = getDirection(vec)
 						end
 					end
 				end))
@@ -2804,7 +2809,7 @@ run(function()
 						local vec = entitylib.character.RootPart.CFrame.LookVector
 						JumpSpeed = 2.5 * Value.Value
 						JumpTick = tick() + 2.5
-						Direction = Vector3.new(vec.X, 0, vec.Z).Unit
+						Direction = getDirection(vec)
 					end
 				end))
 	
