@@ -11409,6 +11409,8 @@ run(function()
 		SpoofEvent = suc and res or nil
 	end
 
+	local lastSent
+
 	local function getRealDevice()
 		local t = UserInputService:GetLastInputType()
 		if t == Enum.UserInputType.Touch then
@@ -11421,9 +11423,12 @@ run(function()
 
 	local function fireSpoof(value)
 		if not SpoofEvent or not value then return end
+		value = tostring(value):upper()
+		if value == lastSent then return end
+		lastSent = value
 		pcall(function()
 			SpoofEvent:FireServer({
-				userInputType = value:upper()
+				userInputType = tostring(value):upper()
 			})
 		end)
 	end
@@ -11437,16 +11442,10 @@ run(function()
 					warn('[DeviceSpoof] SendUserInputType remote not found')
 					return DeviceSpoof:Toggle()
 				end
-
 				fireSpoof(Device.Value)
-
-				-- the game re-reports your real input type on input change; overwrite it again
-				DeviceSpoof:Clean(UserInputService.LastInputTypeChanged:Connect(function()
-					task.defer(fireSpoof, Device.Value)
-				end))
 			else
-				-- tell the server your actual device again
 				fireSpoof(getRealDevice())
+				lastSent = nil -- next enable always sends
 			end
 		end
 	})
