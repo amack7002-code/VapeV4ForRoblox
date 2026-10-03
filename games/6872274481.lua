@@ -7431,32 +7431,45 @@ run(function()
 	local hit = 0
 	
 	local function attemptBreak(tab, localPosition)
-		if not tab then return end
+		if not tab or #tab == 0 then return false end
+		
+		local closest, closestDist = nil, Range.Value + 1
+		
 		for _, v in tab do
-			if (v.Position - localPosition).Magnitude < Range.Value and bedwars.BlockController:isBlockBreakable({blockPosition = v.Position / 3}, lplr) then
-				if not SelfBreak.Enabled and v:GetAttribute('PlacedByUserId') == lplr.UserId then continue end
-				if (v:GetAttribute('BedShieldEndTime') or 0) > workspace:GetServerTimeNow() then continue end
-				if LimitItem.Enabled and not (store.hand.tool and bedwars.ItemMeta[store.hand.tool.Name].breakBlock) then continue end
-	
-				hit += 1
-				local target, path, endpos = bedwars.breakBlock(v, Effect.Enabled, Animation.Enabled, CustomHealth.Enabled and customHealthbar or nil, InstantBreak.Enabled)
-				if path then
-					local currentnode = target
-					for _, part in parts do
-						part.Position = currentnode or Vector3.zero
-						if currentnode then
-							part.BoxHandleAdornment.Color3 = currentnode == endpos and Color3.new(1, 0.2, 0.2) or currentnode == target and Color3.new(0.2, 0.2, 1) or Color3.new(0.2, 1, 0.2)
-						end
-						currentnode = path[currentnode]
-					end
+			local dist = (v.Position - localPosition).Magnitude
+			if dist < closestDist and dist < Range.Value then
+				if bedwars.BlockController:isBlockBreakable({blockPosition = v.Position / 3}, lplr) then
+					if not SelfBreak.Enabled and v:GetAttribute('PlacedByUserId') == lplr.UserId then continue end
+					if (v:GetAttribute('BedShieldEndTime') or 0) > workspace:GetServerTimeNow() then continue end
+					if LimitItem.Enabled and not (store.hand.tool and bedwars.ItemMeta[store.hand.tool.Name].breakBlock) then continue end
+					
+					closest = v
+					closestDist = dist
 				end
-	
-				task.wait(InstantBreak.Enabled and (store.damageBlockFail > tick() and 4.5 or 0) or BreakSpeed.Value)
-	
-				return true
 			end
 		end
-	
+		
+		if closest then
+			hit += 1
+			local target, path, endpos = bedwars.breakBlock(closest, Effect.Enabled, Animation.Enabled, CustomHealth.Enabled and customHealthbar or nil, InstantBreak.Enabled)
+			
+			if path then
+				local currentnode = target
+				for _, part in parts do
+					part.Position = currentnode or Vector3.zero
+					if currentnode then
+						part.BoxHandleAdornment.Color3 = currentnode == endpos and Color3.new(1, 0.2, 0.2) or currentnode == target and Color3.new(0.2, 0.2, 1) or Color3.new(0.2, 1, 0.2)
+					end
+					currentnode = path[currentnode]
+				end
+			end
+			
+			-- Better wait for high-health blocks (ores)
+			local waitTime = InstantBreak.Enabled and (store.damageBlockFail > tick() and 4.5 or 0) or BreakSpeed.Value
+			task.wait(waitTime)
+			return true
+		end
+		
 		return false
 	end
 	
@@ -7484,6 +7497,7 @@ run(function()
 				local beds = collection('bed', Breaker)
 				local luckyblock = collection('LuckyBlock', Breaker)
 				local ironores = collection('iron-ore', Breaker)
+				
 				customlist = collection('block', Breaker, function(tab, obj)
 					if table.find(Custom.ListEnabled, obj.Name) then
 						table.insert(tab, obj)
@@ -7496,6 +7510,7 @@ run(function()
 					if entitylib.isAlive then
 						local localPosition = entitylib.character.RootPart.Position
 	
+						-- Priority order
 						if attemptBreak(Bed.Enabled and beds, localPosition) then continue end
 						if attemptBreak(customlist, localPosition) then continue end
 						if attemptBreak(LuckyBlock.Enabled and luckyblock, localPosition) then continue end
@@ -7514,8 +7529,9 @@ run(function()
 				table.clear(parts)
 			end
 		end,
-		Tooltip = 'Break blocks around you automatically'
+		Tooltip = 'Break blocks around you automatically (improved ore targeting)'
 	})
+	
 	Range = Breaker:CreateSlider({
 		Name = 'Break range',
 		Min = 1,
@@ -7529,7 +7545,7 @@ run(function()
 		Name = 'Break speed',
 		Min = 0,
 		Max = 0.3,
-		Default = 0.25,
+		Default = 0.18, -- slightly faster default for ores
 		Decimal = 100,
 		Suffix = 'seconds'
 	})
