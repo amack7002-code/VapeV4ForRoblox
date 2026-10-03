@@ -746,12 +746,30 @@ run(function()
 		return safeGetProto(require(replicatedStorage.TS.entity.entities['inventory-entity']).InventoryEntity.equipItem, 3)
 	end)
 
+	-- Bedwars update moved/renamed the cannon controllers; resolve their methods without trusting the Knit registry
+	local function safeControllerMethod(moduleName, methodName)
+		local suc, res = pcall(function()
+			local mod = require(lplr.PlayerScripts.TS.controllers.game.block[moduleName])
+			local ctrl = typeof(mod) == 'table' and (mod.default or mod) or nil
+			if ctrl and ctrl[methodName] then
+				return ctrl[methodName]
+			end
+			for _, controller in Knit.Controllers do
+				if typeof(controller) == 'table' and controller[methodName] then
+					return controller[methodName]
+				end
+			end
+			return nil
+		end)
+		return suc and res or nil
+	end
+
 	local remoteNames = {
 		AfkStatus = safeGetProto(Knit.Controllers.AfkController.KnitStart, 1),
 		AttackEntity = Knit.Controllers.SwordController.sendServerRequest,
 		BeePickup = Knit.Controllers.BeeNetController.trigger,
-		CannonAim = safeGetProto(lplr.PlayerScripts.TS.controllers.game.block["cannon-controller"].startAiming, 5),
-		CannonLaunch = lplr.PlayerScripts.TS.controllers.game.block["cannon-hand-controller"].launchSelf,
+		CannonAim = safeGetProto(safeControllerMethod('cannon-controller', 'startAiming'), 5),
+		CannonLaunch = safeControllerMethod('cannon-hand-controller', 'launchSelf'),
 		ConsumeBattery = safeGetProto(Knit.Controllers.BatteryController.onKitLocalActivated, 1),
 		ConsumeItem = safeGetProto(Knit.Controllers.ConsumeController.onEnable, 1),
 		ConsumeSoul = Knit.Controllers.GrimReaperController.consumeSoul,
