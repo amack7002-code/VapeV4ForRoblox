@@ -886,7 +886,7 @@ run(function()
 
 	local function getBlockHits(block, blockpos)
 		if not block then return 0 end
-		local breaktype = bedwars.ItemMeta[block.Name].block.breakType
+		local breaktype = (bedwars.ItemMeta[block.Name] and bedwars.ItemMeta[block.Name].block and bedwars.ItemMeta[block.Name].block.breakType) or 'pickaxe'
 		local tool = store.tools[breaktype]
 		tool = tool and bedwars.ItemMeta[tool.itemType].breakBlock[breaktype] or 2
 		return getBlockHealth(block, bedwars.BlockController:getBlockPosition(blockpos)) / tool
@@ -971,7 +971,7 @@ run(function()
 			if not dblock then return end
 
 			if (workspace:GetServerTimeNow() - bedwars.SwordController.lastAttack) > 0.4 then
-				local breaktype = bedwars.ItemMeta[dblock.Name].block.breakType
+				local breaktype = (bedwars.ItemMeta[dblock.Name] and bedwars.ItemMeta[dblock.Name].block and bedwars.ItemMeta[dblock.Name].block.breakType) or 'pickaxe'
 				local tool = store.tools[breaktype]
 				if tool then
 					switchItem(tool.tool)
@@ -2707,7 +2707,7 @@ run(function()
 			task.delay(0, function()
 				local block, blockpos = getPlacedBlock(rounded)
 				if block and block.Name == 'cannon' and (entitylib.character.RootPart.Position - block.Position).Magnitude < 20 then
-					local breaktype = bedwars.ItemMeta[block.Name].block.breakType
+					local breaktype = (bedwars.ItemMeta[block.Name] and bedwars.ItemMeta[block.Name].block and bedwars.ItemMeta[block.Name].block.breakType) or 'pickaxe'
 					local tool = store.tools[breaktype]
 					if tool then
 						switchItem(tool.tool)
@@ -7372,7 +7372,7 @@ run(function()
 						Size = UDim2.fromOffset(145, 14),
 						Position = UDim2.fromOffset(13, 12),
 						BackgroundTransparency = 1,
-						Text = bedwars.ItemMeta[block.Name].displayName or block.Name,
+						Text = (bedwars.ItemMeta[block.Name] and bedwars.ItemMeta[block.Name].displayName) or block.Name,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						TextYAlignment = Enum.TextYAlignment.Top,
 						TextColor3 = Color3.new(),
@@ -7383,7 +7383,7 @@ run(function()
 						Size = UDim2.fromOffset(145, 14),
 						Position = UDim2.fromOffset(12, 11),
 						BackgroundTransparency = 1,
-						Text = bedwars.ItemMeta[block.Name].displayName or block.Name,
+						Text = (bedwars.ItemMeta[block.Name] and bedwars.ItemMeta[block.Name].displayName) or block.Name,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						TextYAlignment = Enum.TextYAlignment.Top,
 						TextColor3 = color.Dark(uipallet.Text, 0.16),
@@ -7441,7 +7441,7 @@ run(function()
 				if bedwars.BlockController:isBlockBreakable({blockPosition = v.Position / 3}, lplr) then
 					if not SelfBreak.Enabled and v:GetAttribute('PlacedByUserId') == lplr.UserId then continue end
 					if (v:GetAttribute('BedShieldEndTime') or 0) > workspace:GetServerTimeNow() then continue end
-					if LimitItem.Enabled and not (store.hand.tool and bedwars.ItemMeta[store.hand.tool.Name].breakBlock) then continue end
+					if LimitItem.Enabled and not (store.hand.tool and bedwars.ItemMeta[store.hand.tool.Name] and bedwars.ItemMeta[store.hand.tool.Name].breakBlock) then continue end
 					
 					closest = v
 					closestDist = dist
@@ -7451,7 +7451,10 @@ run(function()
 		
 		if closest then
 			hit += 1
-			local target, path, endpos = bedwars.breakBlock(closest, Effect.Enabled, Animation.Enabled, CustomHealth.Enabled and customHealthbar or nil, InstantBreak.Enabled)
+			local suc, target, path, endpos = pcall(bedwars.breakBlock, closest, Effect.Enabled, Animation.Enabled, CustomHealth.Enabled and customHealthbar or nil, InstantBreak.Enabled)
+			if not suc then
+				return false
+			end
 			
 			if path then
 				local currentnode = target
@@ -7496,7 +7499,12 @@ run(function()
 	
 				local beds = collection('bed', Breaker)
 				local luckyblock = collection('LuckyBlock', Breaker)
-				local ironores = collection('iron-ore', Breaker)
+				local ironores = collection({'block', 'iron-ore'}, Breaker, function(tab, obj)
+					local blockname = obj.Name:lower()
+					if blockname:find('iron', 1, true) and blockname:find('ore', 1, true) then
+						table.insert(tab, obj)
+					end
+				end)
 				
 				customlist = collection('block', Breaker, function(tab, obj)
 					if table.find(Custom.ListEnabled, obj.Name) then
