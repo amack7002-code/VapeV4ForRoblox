@@ -764,7 +764,9 @@ run(function()
 		return suc and res or nil
 	end
 
-	local remoteNames = {
+	-- pcall the whole table: one broken remote lookup must not kill the entire script load
+	local remoteSuc, remoteNames = pcall(function()
+	return {
 		AfkStatus = safeGetProto(Knit.Controllers.AfkController.KnitStart, 1),
 		AttackEntity = Knit.Controllers.SwordController.sendServerRequest,
 		BeePickup = Knit.Controllers.BeeNetController.trigger,
@@ -797,6 +799,11 @@ run(function()
 		SummonerClawAttack = Knit.Controllers.SummonerClawHandController.attack,
 		WarlockTarget = safeGetProto(Knit.Controllers.WarlockStaffController.KnitStart, 2)
 	}
+	end)
+	if not remoteSuc then
+		remoteNames = {}
+		notif('Vape', 'Failed to grab remotes', 10, 'alert')
+	end
 
 	local function dumpRemote(tab)
 		local ind
