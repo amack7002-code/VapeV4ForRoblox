@@ -1061,7 +1061,7 @@ run(function()
 			if currentHand and bedwars.ItemMeta then
 				local handData = bedwars.ItemMeta[currentHand.itemType]
 				if handData then
-					toolType = handData.sword and 'sword' or handData.block and 'block' or currentHand.itemType:find('bow') and 'bow'
+					toolType = handData.sword and 'sword' or handData.block and 'block' or currentHand.itemType:find('bow') and 'bow' or currentHand.itemType:find('sword') and 'sword'
 				end
 			end
 
@@ -1263,7 +1263,8 @@ run(function()
 		Function = function(callback)
 			if callback then
 				AimAssist:Clean(runService.Heartbeat:Connect(function(dt)
-					if entitylib.isAlive and store.hand.toolType == 'sword' and ((not ClickAim.Enabled) or (tick() - bedwars.SwordController.lastSwing) < 0.4) then
+					local swingTime = bedwars.SwordController and bedwars.SwordController.lastSwing
+					if entitylib.isAlive and store.hand and store.hand.toolType == 'sword' and ((not ClickAim.Enabled) or (not swingTime or (tick() - swingTime) < 0.4)) then
 						local ent = not KillauraTarget.Enabled and entitylib.EntityPosition({
 							Range = Distance.Value,
 							Part = 'RootPart',
@@ -1273,10 +1274,11 @@ run(function()
 							Sort = sortmethods[Sort.Value]
 						}) or store.KillauraTarget
 	
-						if ent then
-							local delta = (ent.RootPart.Position - entitylib.character.RootPart.Position)
-							local localfacing = entitylib.character.RootPart.CFrame.LookVector * Vector3.new(1, 0, 1)
-							local angle = math.acos(localfacing:Dot((delta * Vector3.new(1, 0, 1)).Unit))
+					if ent and ent.RootPart then
+						local delta = (ent.RootPart.Position - entitylib.character.RootPart.Position) * Vector3.new(1, 0, 1)
+						if delta.Magnitude < 0.01 then return end -- target directly above/below: no horizontal direction to aim in
+						local localfacing = entitylib.character.RootPart.CFrame.LookVector * Vector3.new(1, 0, 1)
+						local angle = math.acos(math.clamp(localfacing:Dot(delta.Unit), -1, 1))
 							if angle >= (math.rad(AngleSlider.Value) / 2) then return end
 							targetinfo.Targets[ent] = tick() + 1
 							gameCamera.CFrame = gameCamera.CFrame:Lerp(CFrame.lookAt(gameCamera.CFrame.p, ent.RootPart.Position), (AimSpeed.Value + (StrafeIncrease.Enabled and (inputService:IsKeyDown(Enum.KeyCode.A) or inputService:IsKeyDown(Enum.KeyCode.D)) and 10 or 0)) * dt)
@@ -1312,7 +1314,7 @@ run(function()
 		Min = 1,
 		Max = 30,
 		Default = 30,
-		Suffx = function(val)
+		Suffix = function(val)
 			return val == 1 and 'stud' or 'studs'
 		end
 	})
